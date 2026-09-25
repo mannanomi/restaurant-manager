@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String @id @default(cuid())
+  name         String
+  role         String // "MANAGER" | "STAFF"
+  passwordHash String
+}
+
+model MenuItem {
+  id          String       @id @default(cuid())
+  name        String
+  price       Float
+  category    String
+  active      Boolean      @default(true)
+  recipeLines RecipeLine[]
+  orderLines  OrderLine[]
+  createdAt   DateTime     @default(now())
+}
+
+model Ingredient {
+  id                 String              @id @default(cuid())
+  name               String
+  unit               String
+  stockQty           Float
+  reorderThreshold   Float
+  preferredVendor    String?
+  recipeLines        RecipeLine[]
+  purchaseOrderLines PurchaseOrderLine[]
+  createdAt          DateTime            @default(now())
+}
+
+model RecipeLine {
+  id           String     @id @default(cuid())
+  menuItemId   String
+  ingredientId String
+  quantity     Float
+  unit         String
+  menuItem     MenuItem   @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@unique([menuItemId, ingredientId])
+}
+
+model Order {
+  id        String      @id @default(cuid())
+  createdAt DateTime    @default(now())
+  total     Float
+  status    String      @default("completed")
+  lines     OrderLine[]
+}
+
+model OrderLine {
+  id         String   @id @default(cuid())
+  orderId    String
+  menuItemId String
+  quantity   Int
+  unitPrice  Float
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+}
+
+model PurchaseOrder {
+  id        String              @id @default(cuid())
+  vendor    String
+  status    String              @default("draft") // "draft" | "sent"
+  createdAt DateTime            @default(now())
+  sentAt    DateTime?
+  lines     PurchaseOrderLine[]
+}
+
+model PurchaseOrderLine {
+  id              String        @id @default(cuid())
+  purchaseOrderId String
+  ingredientId    String
+  quantity        Float
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  ingredient      Ingredient    @relation(fields: [ingredientId], references: [id])
+}
+
+model Expense {
+  id       String   @id @default(cuid())
+  category String
+  amount   Float
+  date     DateTime
+  note     String?
+}
+
+model StaffMember {
+  id         String  @id @default(cuid())
+  name       String
+  hourlyRate Float
+  active     Boolean @default(true)
+  shifts     Shift[]
+}
+
+model Shift {
+  id            String      @id @default(cuid())
+  staffMemberId String
+  date          DateTime
+  hoursWorked   Float
+  payPeriod     String // pay period start date, e.g. "2026-09-01"
+  staffMember   StaffMember @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
+}
